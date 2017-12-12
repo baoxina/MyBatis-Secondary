@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace ：命名空间，用于隔离sql语句，后面mapper代理开发时，会有另一层非常重要的作用。 -->
+<mapper namespace="com.baoxina.mybatis.junior.mapper.UserMapper">
+	
+	<!-- 定义sql片段(id作为sql片段的唯一标识)，使用动态sql ==>  可以使得     ==>  sql语句进行灵活操作，通过表达式进行判断，对sql进行灵活拼接、组装 -->
+	<!-- 经验：
+			1.基于【单表】定义【sql片段】，这样sql片段的可重用性高
+			2.sql片段中不要加where，而是在具体的sql中where条件中引用sql片段 
+	-->
+	<sql id="query_user_sql">
+		<if test="userEx != null">
+			<if test="userEx.id != null and userEx.id != 0">
+				and user.id=#{userEx.id}
+			</if>
+			<if test="userEx.name != null and userEx.name != ''">
+				and user.name=#{userEx.name}
+			</if>
+			<if test="userEx.age != null and userEx.age != 0">
+				and user.age=#{userEx.age}
+			</if>
+			<if test="ids != null">
+				<foreach collection="ids" item="user_id" open="and id in(" close=")" separator=",">
+					#{user_id}
+				</foreach>
+			</if>
+		</if>		
+	</sql>
+	
+	
+	
+	
+	
+	<!-- 
+		使用resultType进行输出映射，只有查询出来的列名和pojo中的属性名一致，该列才可以映射成功。
+		如果查询出来的列名和pojo的属性名不一致，通过定义一个resultMap对列名和pojo属性名之间作一个映射关系。
+		 
+		使用resultMap进行输出映射的开发步骤：
+		1、定义resultMap
+		2、使用resultMap作为statement的输出映射类型
+	-->
+	<resultMap type="userEx" id="userExResultMap">
+		<id column="id_" property="id"/>
+		<result column="name_" property="name"/>
+		<result column="age_" property="age"/>
+	</resultMap>
+	
+	<select id="findUserByIdOnUsingResultMap" parameterType="int" resultMap="userExResultMap">
+		select
+		    user.id   id_,
+		    user.name name_,
+		    user.age  age_
+		from
+		    user
+		where
+    		user.id=#{id}
+	</select>
+	
+	
+	<!-- ======================================================================= -->
+	
+	
+
+	<!-- parameterType和resultType 即输入输出的参数类型均可以为 【简单类型】，【pojo】、【hashmap】 -->
+
+
+	<!-- 以下为包装类型的pojo作为输入和输出参数的例子 -->
+
+	<!-- 
+		
+		parameterType和resultType 均为包装类型的pojo的例子
+		
+		使用parameterType进行输入映射
+		#{userEx.id}   ====>   取出pojo包装对象中的id值
+		${userEx.name} ====>   取出pojo包装对象中的用户名称
+		
+		使用resultType进行输出映射，只有查询出来的列名和pojo中的属性名一致，该列才可以映射成功。
+		如果查询出来的列名和pojo中的属性名全部不一致，没有创建pojo对象。
+		只要查询出来的列名和pojo中的属性有一个一致，就会创建pojo对象。
+	-->
+	<select id="findUserListByUserQueryVo" parameterType="userQueryVo" resultType="userEx">
+		select * from user where user.id=#{userEx.id} and user.name like '${userEx.name}%'
+	</select>
+
+	<!--
+		resultType 为【简单类型】的例子 
+		用户综合查询总数
+		resultType也可以是简单类型	
+		查询出来的结果集只有一行且一列，可以使用简单类型进行输出映射
+	-->
+	<select id="findUserCountByAge" parameterType="userQueryVo" resultType="int">
+		select
+		    count(user.id)
+		from
+		    user 
+		<!-- where可以自动去掉条件中的第一个and -->
+		<where>
+			<!-- 引用sql片段的id，需要引用的sql片段不在当前mapper文件中，则refid应该写为[sql片段所在mapper文件的namespace.sql片段的id] -->
+			<include refid="query_user_sql"/>
+			<!-- 在这里可能还会引用其他的sql片段(其他表的sql片段) -->		
+		</where>
+	</select>
+
+
+	<!-- parameterType和resultType 类型均为【hashmap】类型的例子 -->
+	<select id="findIdByNameAndAge" parameterType="hashMap" resultType="hashMap">
+		select user.id id from user where name=#{name} and age=#{age}
+	</select>
+
+
+
+	<!-- ================================================================================================== -->
+
+
+
+
+
+
+
+	<!-- 以下为简单的po作为输入和输出参数的例子 -->
+	<select id="findUserById" parameterType="int" resultType="user"> 
+		select * from user where id = #{id}
+	</select>
+	
+	<select id="findUsersByName" parameterType="string" resultType="user">
+		select * from user where name like '${value}%'
+	</select>
+	
+	<insert id="insertUser" parameterType="user">
+		<selectKey keyProperty="id" order="AFTER" resultType="int">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		insert into user(name,age) values(#{name},#{age})
+	</insert>
+	
+	<delete id="deleteUserById" parameterType="int">
+		delete from user where id = #{id}
+	</delete>
+	
+	<update id="updateUser" parameterType="user">
+		update user set name=#{name},age=#{age} where id=#{id}
+	</update>
+</mapper>
